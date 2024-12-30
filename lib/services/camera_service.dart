@@ -71,8 +71,7 @@ class CameraService {
   Future<void> _processBarcodes(InputImage inputImage) async {
     final barcodes = await _barcodeScanner.processImage(inputImage);
     for (final barcode in barcodes) {
-      if (barcode.rawValue != null &&
-          !scannedCodes.contains(barcode.rawValue)) {
+      if (barcode.rawValue != null && !scannedCodes.contains(barcode.rawValue)) {
         scannedCodes.insert(0, barcode.rawValue!);
         if (scannedCodes.length > 10) {
           scannedCodes.removeLast();

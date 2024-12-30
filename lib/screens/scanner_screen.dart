@@ -6,24 +6,30 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ScannerScreen extends StatefulWidget {
-  const ScannerScreen({Key? key}) : super(key: key);
+  const ScannerScreen({super.key});
 
   @override
   State<ScannerScreen> createState() => _ScannerScreenState();
 }
 
-class _ScannerScreenState extends State<ScannerScreen>
-    with SingleTickerProviderStateMixin {
+class _ScannerScreenState extends State<ScannerScreen> with SingleTickerProviderStateMixin {
+  //camara y permisos
   bool _isPermissionGranted = false;
   CameraController? _cameraController;
+  late Future<void> _initializeControllerFuture;
+
+  //Escaneo de códigos
   final BarcodeScanner _barcodeScanner = BarcodeScanner();
-  final List<String> _scannedCodes = [];
   bool _isScanningEnabled = true;
   bool _isProcessingImage = false;
+
+  final List<String> _scannedCodes = []; //Manejo de historial
+
+  //Animación
   bool _showScanningLine = false;
-  bool _isFlashOn = false;
-  late Future<void> _initializeControllerFuture;
   late AnimationController _animationController;
+
+  bool _isFlashOn = false; //Estado del flash
 
   @override
   void initState() {
@@ -34,7 +40,7 @@ class _ScannerScreenState extends State<ScannerScreen>
     // Animación de la línea de escaneo
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 500),
     );
   }
 
@@ -59,6 +65,7 @@ class _ScannerScreenState extends State<ScannerScreen>
     }
   }
 
+  //Inicializa la camara, configuraciones necesarios y proceso de
   Future<void> _initializeCamera() async {
     final cameras = await availableCameras();
     if (cameras.isEmpty) {
@@ -71,24 +78,29 @@ class _ScannerScreenState extends State<ScannerScreen>
       enableAudio: false,
     );
 
-    await _cameraController!.initialize();
+    await _cameraController!.initialize(); //Inicializa el controlador
+
+    //Activa el flujo de imágenes
     _cameraController!.startImageStream((image) async {
       if (!_isProcessingImage && _isScanningEnabled) {
         _isProcessingImage = true;
         final inputImage = _convertCameraImageToInputImage(image);
-        await _processBarcodes(inputImage);
+        await _processBarcodes(inputImage); //Procesa img y identif. barra
         _isProcessingImage = false;
       }
     });
 
-    setState(() {});
+    setState(() {}); //actualiza el estado de widget
   }
 
+  //convierte un objeto de tipo CameraImage en un objeto InputImage
   InputImage _convertCameraImageToInputImage(CameraImage image) {
     final WriteBuffer allBytes = WriteBuffer();
+
     for (final Plane plane in image.planes) {
       allBytes.putUint8List(plane.bytes);
     }
+
     final bytes = allBytes.done().buffer.asUint8List();
 
     return InputImage.fromBytes(
@@ -107,13 +119,13 @@ class _ScannerScreenState extends State<ScannerScreen>
       final barcodes = await _barcodeScanner.processImage(inputImage);
 
       for (final barcode in barcodes) {
-        if (barcode.rawValue != null &&
-            !_scannedCodes.contains(barcode.rawValue)) {
+        if (barcode.rawValue != null && !_scannedCodes.contains(barcode.rawValue)) {
           setState(() {
             _scannedCodes.insert(0, barcode.rawValue!);
-            if (_scannedCodes.length > 10) {
+
+            /*if (_scannedCodes.length > 5) { //establece la logitud de codigos en la lista
               _scannedCodes.removeLast();
-            }
+            }*/
             _showScanningLine = true; // Mostrar la línea al detectar un código
           });
 
@@ -131,6 +143,7 @@ class _ScannerScreenState extends State<ScannerScreen>
           await Future.delayed(const Duration(milliseconds: 1500));
           _showScanningLine = false; // Ocultar la línea después de la pausa
           _animationController.stop();
+
           setState(() {
             _isScanningEnabled = true;
           });
@@ -141,11 +154,13 @@ class _ScannerScreenState extends State<ScannerScreen>
     }
   }
 
+  //guarda una lista de códigos escaneados en el almacenamiento local del dispositivo
   Future<void> _saveScannedCodes() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('scannedCodes', _scannedCodes);
+    await prefs.setStringList('scannedCodes', _scannedCodes); //ingresa(clave, objeto)
   }
 
+  //cargar la lista de códigos escaneados previamente almacenados en SharedPreferences
   Future<void> _loadScannedCodes() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -153,6 +168,7 @@ class _ScannerScreenState extends State<ScannerScreen>
     });
   }
 
+  //Interfaz grafica de cuadro de escaneo y escanner cuando se detecta un codigo de barra
   Widget _buildScannerOverlay() {
     return Stack(
       children: [
@@ -165,7 +181,7 @@ class _ScannerScreenState extends State<ScannerScreen>
                 color: _showScanningLine ? Colors.blue : Colors.green,
                 width: 3,
               ),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(8),
             ),
           ),
         ),
@@ -189,6 +205,14 @@ class _ScannerScreenState extends State<ScannerScreen>
                           Colors.green.withOpacity(0.1),
                         ],
                       ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color.fromARGB(255, 54, 255, 64)
+                              .withOpacity(0.5), // Color de la sombra
+                          offset: const Offset(0, 4), // Desplazamiento de la sombra (eje X, eje Y)
+                          blurRadius: 8, // Cuánto se difumina la sombra
+                        ),
+                      ],
                     ),
                   ),
                 );
@@ -199,6 +223,7 @@ class _ScannerScreenState extends State<ScannerScreen>
     );
   }
 
+  //Widget para mostrar codigos escaneados
   Widget _buildScannedList() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -213,12 +238,12 @@ class _ScannerScreenState extends State<ScannerScreen>
             'Códigos Escaneados',
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           if (_scannedCodes.isEmpty)
             const Text('No hay códigos escaneados aún.')
           else
             SizedBox(
-              height: 120,
+              height: 80,
               child: ListView.builder(
                 itemCount: _scannedCodes.length,
                 itemBuilder: (context, index) {
@@ -255,7 +280,7 @@ class _ScannerScreenState extends State<ScannerScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Escáner de Códigos'),
+        title: const Text('Escanear Productos'),
         backgroundColor: Colors.blueAccent,
         actions: [
           IconButton(
@@ -263,8 +288,7 @@ class _ScannerScreenState extends State<ScannerScreen>
             onPressed: () {
               setState(() {
                 _isFlashOn = !_isFlashOn;
-                _cameraController?.setFlashMode(
-                    _isFlashOn ? FlashMode.torch : FlashMode.off);
+                _cameraController?.setFlashMode(_isFlashOn ? FlashMode.torch : FlashMode.off);
               });
             },
           ),
@@ -278,8 +302,7 @@ class _ScannerScreenState extends State<ScannerScreen>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.camera_alt_outlined,
-                      size: 100, color: Colors.grey),
+                  const Icon(Icons.camera_alt_outlined, size: 100, color: Colors.grey),
                   const SizedBox(height: 16),
                   const Text('Se requiere permiso de cámara.'),
                   const SizedBox(height: 16),

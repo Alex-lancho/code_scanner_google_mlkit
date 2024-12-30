@@ -17,12 +17,12 @@ class ScannedList extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           const Text(
-            'Códigos Escaneados',
+            'Códigos-----',
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           if (scannedCodes.isEmpty)
-            const Text('No hay códigos escaneados aún.')
+            const Text('78sdf7ascódigos escaneados aún.')
           else
             SizedBox(
               height: 120,
